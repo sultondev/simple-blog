@@ -6,7 +6,9 @@ export function useCustomFetch<T>(
   options: UseFetchOptions<T> = {},
 ) {
   const defaults: UseFetchOptions<T> = {
-    baseURL: process.env.NUXT_PUBLIC_API_BASE,
+    baseURL:
+      "https://jsonplaceholder.typicode.com" ||
+      process.env.NUXT_PUBLIC_API_BASE,
     // this overrides the default key generation, which includes a hash of
     // url, method, headers, etc. - this should be used with care as the key
     // is how Nuxt decides how responses should be deduplicated between

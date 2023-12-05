@@ -12,7 +12,9 @@ import AppLogo from "~/components/AppLogo.vue";
             Blog App
           </span>
         </div>
-        <div class="">right</div>
+        <div class="">
+          <NuxtLink to="/posts"> Posts </NuxtLink>
+        </div>
       </header>
 
       <slot />
