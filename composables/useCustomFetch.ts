@@ -1,23 +1,12 @@
-import type { UseFetchOptions } from "nuxt/app";
-import { defu } from "defu";
+import { $fetch, FetchOptions } from "ofetch";
 
-export function useCustomFetch<T>(
+export function useCustomFetch(
   url: string | (() => string),
-  options: UseFetchOptions<T> = {},
+  options: FetchOptions = {},
 ) {
-  const defaults: UseFetchOptions<T> = {
-    baseURL:
-      "https://jsonplaceholder.typicode.com" ||
-      process.env.NUXT_PUBLIC_API_BASE,
-    // this overrides the default key generation, which includes a hash of
-    // url, method, headers, etc. - this should be used with care as the key
-    // is how Nuxt decides how responses should be deduplicated between
-    // client and server
-    key: url,
-  };
-
-  // for nice deep defaults, please use unjs/defu
-  const params = defu(options, defaults);
-
-  return useFetch(url, params);
+  return $fetch(url, {
+    method: "GET",
+    baseURL: "https://jsonplaceholder.typicode.com",
+    ...options,
+  });
 }

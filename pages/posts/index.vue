@@ -1,43 +1,59 @@
 <script lang="ts" setup>
-import { reactive } from "vue";
 import { useAsyncData } from "#app";
-import { $fetch } from "ofetch";
+import type { PostDataType } from "~/typing/PostData";
+import { useCustomFetch } from "~/composables/useCustomFetch";
 
-const pageData = reactive({
-  currentPage: 1,
-  limit: 10,
-});
 const currentPage = ref(1);
 const dataLimit = ref(10);
 const dataOrder = ref<"asc" | "desc">("asc");
 
-const { data } = useAsyncData(
+const posts = ref<PostDataType[] | []>([]);
+const { data, pending, error } = useAsyncData<
+  PostDataType[]
+>(
   "postsReqs",
   () =>
-    $fetch(`/posts`, {
-      method: "GET",
-      baseURL: "https://jsonplaceholder.typicode.com",
+    useCustomFetch("/posts", {
       params: {
-        // _page: currentPage.value,
+        _page: currentPage.value,
         _limit: dataLimit.value,
-        _order: dataOrder.value,
       },
     }),
   {
-    watch: [dataLimit, dataOrder],
+    watch: [dataLimit, currentPage],
   },
 );
 
+watch(data, () => {
+  posts.value = [
+    ...posts.value,
+    ...(data.value as PostDataType[] | []),
+  ];
+});
+
+// дата дольжна было хранить в себе total,
+
 function loadMore() {
-  currentPage.value += 1;
+  currentPage.value = currentPage.value + 1;
 }
+
+// function filterBySettings() {
+//   const filteredPosts = $fetch(`/posts`, {
+//     method: "GET",
+//     baseURL: "https://jsonplaceholder.typicode.com",
+//     params: {
+//       _order: dataOrder.value,
+//     },
+//   });
+// }
+//
+// filterBySettings();
 
 let observer: IntersectionObserver | null = null;
 const observerElement = ref(null);
 
 const observerCallback: IntersectionObserverCallback = (
   entries,
-  observer,
 ) => {
   const [entry] = entries;
 
@@ -69,10 +85,14 @@ onUnmounted(() => {
       <option value="asc">A-Z</option>
       <option value="desc">Z-A</option>
     </select>
-    <ul class="py-6 flex flex-col gap-4">
+    <div v-if="pending && posts.length === 0">
+      loading logic...
+    </div>
+    <div v-else-if="error">error logic</div>
+    <ul v-else class="py-6 flex flex-col gap-4">
       <li
-        v-for="(item, idx) in data"
-        :key="'postItem-' + item.id"
+        v-for="(item, idx) in posts"
+        :key="'postItem-' + item.id + idx"
       >
         <PostItem
           :id="item.id"
@@ -82,6 +102,9 @@ onUnmounted(() => {
         />
       </li>
     </ul>
+    <div v-if="pending && posts.length > 0">
+      loading logic...
+    </div>
     <!-- Element to observe -->
     <div ref="observerElement"></div>
   </div>
