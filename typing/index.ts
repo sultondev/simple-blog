@@ -5,6 +5,14 @@ export type PostDataType = {
   body: string;
 };
 
+export type CommentDataType = {
+  postId: number;
+  id: number;
+  name: string;
+  email: string;
+  body: string;
+};
+
 export type UserDataType = {
   id: number;
   name: string;

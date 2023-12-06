@@ -5,7 +5,9 @@ import AppLogo from "~/components/AppLogo.vue";
 <template>
   <div class="default-layout">
     <div class="container mx-auto">
-      <header class="flex justify-between py-4">
+      <header
+        class="flex justify-between items-center py-4"
+      >
         <div class="flex items-center gap-4">
           <AppLogo />
           <span class="text-3xl font-medium">
@@ -13,7 +15,9 @@ import AppLogo from "~/components/AppLogo.vue";
           </span>
         </div>
         <div class="">
-          <NuxtLink to="/posts"> Posts </NuxtLink>
+          <NuxtLink class="text-2xl" to="/posts">
+            Posts</NuxtLink
+          >
         </div>
       </header>
 
