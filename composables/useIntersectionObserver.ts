@@ -1,6 +1,7 @@
 // useIntersectionObserver.ts
-import { onMounted, onUnmounted, Ref } from "vue";
+import {onMounted, onUnmounted, Ref} from "vue";
 
+// Infinity scroll с помощью intersection observer
 export function useIntersectionObserver(
   elementRef: Ref<Element | null>,
   callback: IntersectionObserverCallback,

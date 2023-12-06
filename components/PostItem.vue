@@ -10,6 +10,7 @@ const props = defineProps<PropTypes>();
 </script>
 
 <template>
+  <!-- Исползовал v-once что бы оптимизировать когда грузит infinity scroll  -->
   <div
     class="shadow-md hover:shadow-lg py-3 px-4 rounded-xl flex justify-between gap-4"
   >

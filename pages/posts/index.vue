@@ -51,6 +51,7 @@ onUnmounted(() => {
   window.removeEventListener("scroll", onScroll);
 });
 
+// event listener
 function onScroll() {
   const nearBottom =
     window.innerHeight + window.scrollY >=
@@ -65,11 +66,13 @@ function onScroll() {
   }
 }
 
+// loadMore для infinity scroll
 async function loadMore() {
   if (runOutData.value) return;
   try {
     currentPage.value++;
     dataLoadings.scrollLoading = true;
+    // loadMore важно передовать фильтры
     const newPosts = await $get("/posts", {
       params: {
         _page: currentPage.value,
