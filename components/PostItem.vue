@@ -15,15 +15,17 @@ const props = defineProps<PropTypes>();
   >
     <div class="">
       <NuxtLink
+        v-once
         :to="'/posts/' + props.id"
         class="font-bold block text-2xl mb-8 underline"
       >
         {{ props.title }}
       </NuxtLink>
-      <p class="">{{ props.body }}</p>
+      <p v-once class="">{{ props.body }}</p>
     </div>
     <div>
       <img
+        v-once
         alt="not-found"
         class="min-w-[150px] min-h-[150px]"
         src="../public/images/empty-img.png"

@@ -1,7 +1,8 @@
 <script lang="ts" setup>
-import type { PostDataType } from "~/typing/PostData";
+import type { PostDataType, UserDataType } from "~/typing";
 import { useApi } from "~/composables/useApi";
 import { useIntersectionObserver } from "~/composables/useIntersectionObserver";
+import { debounce } from "~/utils/debounce";
 
 const currentPage = ref(1);
 const dataLimit = ref(10);
@@ -10,24 +11,25 @@ const posts = ref<PostDataType[]>([]);
 
 const postFilters = reactive({
   title: "",
-  order: "",
+  order: "asc",
   author: "",
   sort: [],
 });
 const liveSearch = ref(false);
-
-const shouldIntersecting = ref(true);
+const debounceSearchText = ref("");
 const { loading, $get } = useApi<PostDataType[]>();
-
+const users = ref<UserDataType[]>([]);
 onMounted(async () => {
   const data = await $get("/posts", {
     params: {
       _page: currentPage.value,
       _limit: dataLimit.value,
+      _order: postFilters.order,
     },
   });
-
-  posts.value = [...data];
+  const usersList = await $get<UserDataType[]>("/users");
+  users.value = usersList;
+  posts.value = data;
 });
 
 async function loadMore() {
@@ -36,6 +38,9 @@ async function loadMore() {
     params: {
       _page: currentPage.value,
       _limit: dataLimit.value,
+      _sort: postFilters.sort.join(","),
+      _order: postFilters.order,
+      title_like: postFilters.title,
     },
   });
 
@@ -54,17 +59,23 @@ const loadMoreCallback: IntersectionObserverCallback = (
 
 useIntersectionObserver(observerElement, loadMoreCallback);
 
-async function onSubmit(e: Event) {
+const debouncedSearch = debounce((query: string) => {
+  postFilters.title = query;
+}, 500);
+
+function onSubmit(e: Event) {
   e.preventDefault();
   fetchPostsWithFilter();
 }
 
-function handleTitleSearch(e: Event): void {
-  const input = e.target as HTMLInputElement;
-  postFilters.title = input.value;
+function handleTitleSearch(event: Event) {
+  const input = event.target as HTMLInputElement;
+  debounceSearchText.value = input.value;
 }
 
 async function fetchPostsWithFilter() {
+  currentPage.value = 1;
+
   await $get("/posts", {
     params: {
       _limit: dataLimit.value,
@@ -79,10 +90,13 @@ async function fetchPostsWithFilter() {
 
 watch(postFilters, () => {
   if (liveSearch) {
-    setTimeout(() => {
-      fetchPostsWithFilter();
-    }, 1000);
+    // need to write debounce logic instead of this garbage
+    fetchPostsWithFilter();
   }
+});
+
+watch(debounceSearchText, (newValue) => {
+  debouncedSearch(newValue);
 });
 </script>
 
@@ -104,6 +118,9 @@ watch(postFilters, () => {
         <div class="py-8">loading skeleton</div>
         <div class="py-8">loading skeleton</div>
         <div class="py-8">loading skeleton</div>
+      </div>
+      <div v-else-if="!loading && posts.length === 0">
+        empty
       </div>
       <ul v-else class="py-6 flex flex-col gap-4">
         <li
@@ -135,8 +152,9 @@ watch(postFilters, () => {
           <div class="text-2xl font-medium mb-6">
             Filters
           </div>
+          <!-- Не использовал v-mode потому что при фокусе на пустое поле watch отрабатывает как в @change  -->
           <input
-            :value="postFilters.title"
+            :value="debounceSearchText"
             class="border py-1 px-2 w-full outline-none focus:border-black rounded"
             name="titleSearch"
             placeholder="Search by title"
@@ -208,10 +226,23 @@ watch(postFilters, () => {
           <div class="">
             <select
               id=""
+              v-model="postFilters.author"
               class="w-full py-1 border"
               name="author"
             >
-              <option value="1">1</option>
+              <option value="">None</option>
+              <option
+                v-for="(user, idx) in users"
+                :key="user.email + idx"
+                :value="user.username"
+              >
+                <div class="flex justify-between">
+                  <div>{{ user.id }} )</div>
+                  <div class="mr-4 block">
+                    {{ user.name }}
+                  </div>
+                </div>
+              </option>
             </select>
           </div>
           <button
