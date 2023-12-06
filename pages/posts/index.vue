@@ -23,6 +23,7 @@ const dataLoadings = reactive({
   scrollLoading: false,
   filterLoading: false,
 });
+const runOutData = ref(false);
 
 onMounted(async () => {
   dataLoadings.postInialLoading = true;
@@ -50,7 +51,12 @@ function onScroll() {
   const nearBottom =
     window.innerHeight + window.scrollY >=
     document.body.offsetHeight - 10;
-  if (nearBottom && !dataLoadings.filterLoading) {
+  if (
+    nearBottom &&
+    !dataLoadings.filterLoading &&
+    !runOutData.value &&
+    !dataLoadings.scrollLoading
+  ) {
     loadMore();
   }
 }
@@ -59,7 +65,6 @@ async function loadMore() {
   try {
     currentPage.value++;
     dataLoadings.scrollLoading = true;
-
     const response = await $get("/posts", {
       params: {
         _page: currentPage.value,
@@ -72,6 +77,7 @@ async function loadMore() {
     posts.value = [...posts.value, ...response];
 
     dataLoadings.scrollLoading = false;
+    if (response.length === 0) runOutData.value = true;
   } catch (error) {
     console.error(error);
     // Handle the error appropriately
@@ -95,6 +101,7 @@ function handleTitleSearch(event: Event) {
 async function fetchPostsWithFilter() {
   currentPage.value = 1;
   dataLoadings.filterLoading = true;
+  runOutData.value = false;
   await $get("/posts", {
     params: {
       _limit: dataLimit.value,
@@ -142,7 +149,7 @@ watch(debounceSearchText, (newValue) => {
         <div class="text-8xl">Loading...</div>
       </div>
       <div v-else-if="posts.length === 0" class="">
-        EMpty
+        Empty
       </div>
       <ul v-else class="py-6 flex flex-col gap-4">
         <li

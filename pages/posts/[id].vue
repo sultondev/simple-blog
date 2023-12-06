@@ -16,6 +16,8 @@ const dataLoadings = reactive({
   commentsInitialLoading: false,
   scrollLoading: false,
 });
+const runOutData = ref(false);
+
 // When accessing /posts/1, route.params.id will be 1
 onMounted(async () => {
   dataLoadings.commentsInitialLoading = true;
@@ -46,8 +48,12 @@ onMounted(async () => {
 function onScroll() {
   const nearBottom =
     window.innerHeight + window.scrollY >=
-    document.body.offsetHeight - 10;
-  if (nearBottom) {
+    document.body.offsetHeight - 2;
+  if (
+    nearBottom &&
+    runOutData.value === false &&
+    dataLoadings.scrollLoading === false
+  ) {
     loadMore();
   }
 }
@@ -71,8 +77,8 @@ async function loadMore() {
       },
     );
     comments.value = [...comments.value, ...response];
-
     dataLoadings.scrollLoading = false;
+    if (response.length === 0) runOutData.value = true;
   } catch (error) {
     console.error(error);
     // Handle the error appropriately
