@@ -17,11 +17,15 @@ const postFilters = reactive({
 const liveSearch = ref(false);
 const debounceSearchText = ref("");
 const { $get } = useApi<PostDataType[]>();
-const arePostsLoading = ref(false);
 const users = ref<UserDataType[]>([]);
+const dataLoadings = reactive({
+  postInialLoading: false,
+  scrollLoading: false,
+  filterLoading: false,
+});
 
 onMounted(async () => {
-  arePostsLoading.value = true;
+  dataLoadings.postInialLoading = true;
   await $get("/posts", {
     params: {
       _page: currentPage.value,
@@ -30,7 +34,7 @@ onMounted(async () => {
     },
   }).then((data) => {
     posts.value = data;
-    arePostsLoading.value = false;
+    dataLoadings.postInialLoading = false;
   });
   await $get<UserDataType[]>("/users").then((data) => {
     users.value = data;
@@ -39,14 +43,14 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  window.addEventListener("scroll", onScroll);
+  window.removeEventListener("scroll", onScroll);
 });
 
 function onScroll() {
   const nearBottom =
     window.innerHeight + window.scrollY >=
     document.body.offsetHeight - 10;
-  if (nearBottom) {
+  if (nearBottom && !dataLoadings.filterLoading) {
     loadMore();
   }
 }
@@ -54,7 +58,7 @@ function onScroll() {
 async function loadMore() {
   try {
     currentPage.value++;
-    arePostsLoading.value = true;
+    dataLoadings.scrollLoading = true;
 
     const response = await $get("/posts", {
       params: {
@@ -67,7 +71,7 @@ async function loadMore() {
     });
     posts.value = [...posts.value, ...response];
 
-    arePostsLoading.value = false;
+    dataLoadings.scrollLoading = false;
   } catch (error) {
     console.error(error);
     // Handle the error appropriately
@@ -90,7 +94,7 @@ function handleTitleSearch(event: Event) {
 
 async function fetchPostsWithFilter() {
   currentPage.value = 1;
-  arePostsLoading.value = true;
+  dataLoadings.filterLoading = true;
   await $get("/posts", {
     params: {
       _limit: dataLimit.value,
@@ -104,7 +108,7 @@ async function fetchPostsWithFilter() {
       posts.value = data;
     })
     .finally(() => {
-      arePostsLoading.value = false;
+      dataLoadings.filterLoading = false;
     });
 }
 
@@ -123,9 +127,7 @@ watch(debounceSearchText, (newValue) => {
   <div class="flex justify-between gap-10 py-8">
     <div class="">
       <div class="text-4xl font-bold mb-8">Posts</div>
-      <div v-if="arePostsLoading && posts.length === 0">
-        <div class="py-8">loading skeleton</div>
-        <div class="py-8">loading skeleton</div>
+      <div v-if="dataLoadings.postInialLoading">
         <div class="py-8">loading skeleton</div>
         <div class="py-8">loading skeleton</div>
         <div class="py-8">loading skeleton</div>
@@ -134,12 +136,14 @@ watch(debounceSearchText, (newValue) => {
         <div class="py-8">loading skeleton</div>
       </div>
       <div
-        v-else-if="!arePostsLoading && posts.length === 0"
+        v-else-if="dataLoadings.filterLoading"
         class="min-h-50"
       >
-        <div class="text-8xl">Empty</div>
+        <div class="text-8xl">Loading...</div>
       </div>
-
+      <div v-else-if="posts.length === 0" class="">
+        EMpty
+      </div>
       <ul v-else class="py-6 flex flex-col gap-4">
         <li
           v-for="item in posts"
@@ -153,7 +157,11 @@ watch(debounceSearchText, (newValue) => {
           />
         </li>
       </ul>
-      <div v-if="arePostsLoading && posts.length > 0">
+      <div
+        v-if="
+          dataLoadings.scrollLoading && posts.length > 0
+        "
+      >
         infinity scroll loading...
       </div>
       <!-- Для infinity scroll-a -->
