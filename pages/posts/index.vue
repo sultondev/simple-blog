@@ -19,30 +19,34 @@ const debounceSearchText = ref("");
 const { $get } = useApi<PostDataType[]>();
 const users = ref<UserDataType[]>([]);
 const dataLoadings = reactive({
-  postInialLoading: false,
+  postInitialLoading: false,
   scrollLoading: false,
   filterLoading: false,
 });
 const runOutData = ref(false);
 
 onMounted(async () => {
-  dataLoadings.postInialLoading = true;
-  await $get("/posts", {
-    params: {
-      _page: currentPage.value,
-      _limit: dataLimit.value,
-      _order: postFilters.order,
-    },
-  }).then((data) => {
-    posts.value = data;
-    dataLoadings.postInialLoading = false;
-  });
-  await $get<UserDataType[]>("/users").then((data) => {
-    users.value = data;
-  });
+  try {
+    dataLoadings.postInitialLoading = true;
+    const [postsRequest, usersRequest] = await Promise.all([
+      $get("/posts", {
+        params: {
+          _page: currentPage.value,
+          _limit: dataLimit.value,
+          _order: postFilters.order,
+        },
+      }),
+      $get<UserDataType[]>("/users"),
+    ]);
+    posts.value = postsRequest;
+    users.value = usersRequest;
+  } catch (error) {
+    // handle errors here
+  } finally {
+    dataLoadings.postInitialLoading = false;
+  }
   window.addEventListener("scroll", onScroll);
 });
-
 onUnmounted(() => {
   window.removeEventListener("scroll", onScroll);
 });
@@ -53,8 +57,8 @@ function onScroll() {
     document.body.offsetHeight - 10;
   if (
     nearBottom &&
+    !dataLoadings.postInitialLoading &&
     !dataLoadings.filterLoading &&
-    !runOutData.value &&
     !dataLoadings.scrollLoading
   ) {
     loadMore();
@@ -62,10 +66,11 @@ function onScroll() {
 }
 
 async function loadMore() {
+  if (runOutData.value) return;
   try {
     currentPage.value++;
     dataLoadings.scrollLoading = true;
-    const response = await $get("/posts", {
+    const newPosts = await $get("/posts", {
       params: {
         _page: currentPage.value,
         _limit: dataLimit.value,
@@ -74,13 +79,12 @@ async function loadMore() {
         title_like: postFilters.title,
       },
     });
-    posts.value = [...posts.value, ...response];
-
-    dataLoadings.scrollLoading = false;
-    if (response.length === 0) runOutData.value = true;
+    posts.value = [...posts.value, ...newPosts];
+    runOutData.value = newPosts.length === 0;
   } catch (error) {
-    console.error(error);
     // Handle the error appropriately
+  } finally {
+    dataLoadings.scrollLoading = false;
   }
 }
 
@@ -98,11 +102,11 @@ function handleTitleSearch(event: Event) {
   debounceSearchText.value = input.value;
 }
 
-async function fetchPostsWithFilter() {
+function fetchPostsWithFilter() {
   currentPage.value = 1;
   dataLoadings.filterLoading = true;
   runOutData.value = false;
-  await $get("/posts", {
+  $get("/posts", {
     params: {
       _limit: dataLimit.value,
       _sort: postFilters.sort.join(","),
@@ -134,7 +138,7 @@ watch(debounceSearchText, (newValue) => {
   <div class="flex justify-between gap-10 py-8">
     <div class="">
       <div class="text-4xl font-bold mb-8">Posts</div>
-      <div v-if="dataLoadings.postInialLoading">
+      <div v-if="dataLoadings.postInitialLoading">
         <div class="py-8">loading skeleton</div>
         <div class="py-8">loading skeleton</div>
         <div class="py-8">loading skeleton</div>

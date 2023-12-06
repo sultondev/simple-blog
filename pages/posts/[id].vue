@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { useApi } from "~/composables/useApi";
+
 import type {
   CommentDataType,
   PostDataType,
@@ -20,27 +21,29 @@ const runOutData = ref(false);
 
 // When accessing /posts/1, route.params.id will be 1
 onMounted(async () => {
-  dataLoadings.commentsInitialLoading = true;
-  await $get<CommentDataType[]>(
-    `/posts/${route.params.id}/comments`,
-    {
-      params: {
-        _page: currentPage.value,
-        _limit: dataLimit.value,
-      },
-    },
-  ).then((data) => {
-    comments.value = data;
-    dataLoadings.commentsInitialLoading = false;
-  });
-
-  dataLoadings.postInitialLoading = true;
-  await $get<PostDataType>(
-    `/posts/${route.params.id}`,
-  ).then((data) => {
-    post.value = data;
+  try {
+    dataLoadings.commentsInitialLoading = true;
+    const [commentsRequest, postInfoRequest] =
+      await Promise.all([
+        $get<CommentDataType[]>(
+          `/posts/${route.params.id}/comments`,
+          {
+            params: {
+              _page: currentPage.value,
+              _limit: dataLimit.value,
+            },
+          },
+        ),
+        $get<PostDataType>(`/posts/${route.params.id}`),
+      ]);
+    post.value = postInfoRequest;
     dataLoadings.postInitialLoading = false;
-  });
+
+    comments.value = commentsRequest;
+    dataLoadings.commentsInitialLoading = false;
+  } catch (error) {
+    // handle errors here
+  }
 
   window.addEventListener("scroll", onScroll);
 });
@@ -49,11 +52,7 @@ function onScroll() {
   const nearBottom =
     window.innerHeight + window.scrollY >=
     document.body.offsetHeight - 2;
-  if (
-    nearBottom &&
-    runOutData.value === false &&
-    dataLoadings.scrollLoading === false
-  ) {
+  if (nearBottom && !dataLoadings.scrollLoading) {
     loadMore();
   }
 }
@@ -63,6 +62,7 @@ onUnmounted(() => {
 });
 
 async function loadMore() {
+  if (runOutData.value) return;
   try {
     currentPage.value++;
     dataLoadings.scrollLoading = true;
@@ -78,7 +78,7 @@ async function loadMore() {
     );
     comments.value = [...comments.value, ...response];
     dataLoadings.scrollLoading = false;
-    if (response.length === 0) runOutData.value = true;
+    runOutData.value = response.length === 0;
   } catch (error) {
     console.error(error);
     // Handle the error appropriately
